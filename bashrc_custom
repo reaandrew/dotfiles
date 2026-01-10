@@ -1,0 +1,135 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Developer Environment Configuration
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Better History
+# ─────────────────────────────────────────────────────────────────────────────
+HISTSIZE=50000
+HISTFILESIZE=100000
+HISTCONTROL=ignoreboth:erasedups
+shopt -s histappend
+PROMPT_COMMAND="history -a;$PROMPT_COMMAND"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Navigation Aliases
+# ─────────────────────────────────────────────────────────────────────────────
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias ~='cd ~'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Better ls with colors
+# ─────────────────────────────────────────────────────────────────────────────
+alias ls='ls --color=auto --group-directories-first'
+alias ll='ls -alFh'
+alias la='ls -A'
+alias lt='ls -ltrh'
+alias lsize='ls -lSrh'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Git Aliases
+# ─────────────────────────────────────────────────────────────────────────────
+alias g='git'
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gpl='git pull'
+alias gco='git checkout'
+alias gb='git branch'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gl='git log --oneline --graph --decorate -15'
+alias gla='git log --oneline --graph --decorate --all -20'
+alias gst='git stash'
+alias gstp='git stash pop'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Docker Aliases
+# ─────────────────────────────────────────────────────────────────────────────
+alias d='docker'
+alias dc='docker compose'
+alias dps='docker ps'
+alias dpsa='docker ps -a'
+alias di='docker images'
+alias dex='docker exec -it'
+alias dlog='docker logs -f'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Developer Utilities
+# ─────────────────────────────────────────────────────────────────────────────
+alias c='clear'
+alias h='history'
+alias j='jobs -l'
+alias ports='netstat -tulanp 2>/dev/null || ss -tulanp'
+alias myip='curl -s ifconfig.me'
+alias path='echo $PATH | tr ":" "\n"'
+alias now='date +"%Y-%m-%d %H:%M:%S"'
+
+# Make with all cores
+alias make='make -j$(nproc)'
+
+# Quick edit configs
+alias bashrc='${EDITOR:-vim} ~/.bashrc'
+alias tmuxconf='${EDITOR:-vim} ~/.tmux.conf'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Safety Aliases
+# ─────────────────────────────────────────────────────────────────────────────
+alias rm='rm -i'
+alias cp='cp -i'
+alias mv='mv -i'
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Directory Bookmarks
+# ─────────────────────────────────────────────────────────────────────────────
+export MARKPATH=$HOME/.marks
+function jump { cd -P "$MARKPATH/$1" 2>/dev/null || echo "No such mark: $1"; }
+function mark { mkdir -p "$MARKPATH"; ln -s "$(pwd)" "$MARKPATH/$1"; }
+function unmark { rm -i "$MARKPATH/$1"; }
+function marks { ls -l "$MARKPATH" 2>/dev/null | sed 's/  / /g' | cut -d' ' -f9- | sed 's/ -/\t-/g' && echo; }
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Useful Functions
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Create directory and cd into it
+mkcd() { mkdir -p "$1" && cd "$1"; }
+
+# Extract various archive types
+extract() {
+    if [ -f "$1" ]; then
+        case "$1" in
+            *.tar.bz2)   tar xjf "$1"     ;;
+            *.tar.gz)    tar xzf "$1"     ;;
+            *.bz2)       bunzip2 "$1"     ;;
+            *.rar)       unrar x "$1"     ;;
+            *.gz)        gunzip "$1"      ;;
+            *.tar)       tar xf "$1"      ;;
+            *.tbz2)      tar xjf "$1"     ;;
+            *.tgz)       tar xzf "$1"     ;;
+            *.zip)       unzip "$1"       ;;
+            *.Z)         uncompress "$1"  ;;
+            *.7z)        7z x "$1"        ;;
+            *)           echo "'$1' cannot be extracted via extract()" ;;
+        esac
+    else
+        echo "'$1' is not a valid file"
+    fi
+}
+
+# Quick find file
+ff() { find . -type f -iname "*$1*" 2>/dev/null; }
+
+# Quick find directory
+fd() { find . -type d -iname "*$1*" 2>/dev/null; }
+
+# Search in files
+fif() { grep -rn --color=auto "$1" . 2>/dev/null; }
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Initialize Starship Prompt
+# ─────────────────────────────────────────────────────────────────────────────
+eval "$(starship init bash)"

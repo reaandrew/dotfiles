@@ -142,7 +142,7 @@ eval "$(starship init bash)"
 # ─────────────────────────────────────────────────────────────────────────────
 vulnscan() {
     if [ $# -lt 1 ]; then
-        echo 'usage: vulnscan <git-url-or-path> [-o OUT_DIR] [--keep] [--no-spinner]' >&2
+        echo 'usage: vulnscan <git-url-or-path> [-o OUT_DIR] [--keep] [--no-spinner] [--no-host-check]' >&2
         return 2
     fi
     if command -v docker >/dev/null 2>&1; then

@@ -133,3 +133,37 @@ fif() { grep -rn --color=auto "$1" . 2>/dev/null; }
 #  Initialize Starship Prompt
 # ─────────────────────────────────────────────────────────────────────────────
 eval "$(starship init bash)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  vulnscan — wrapper around ghcr.io/reaandrew/vuln-scan
+#  https://github.com/reaandrew/vuln-scan
+# ─────────────────────────────────────────────────────────────────────────────
+vulnscan() {
+    if [ $# -lt 1 ]; then
+        echo 'usage: vulnscan <git-url-or-path> [-o OUT_DIR] [--keep] [--no-spinner]' >&2
+        return 2
+    fi
+    local target=$1; shift
+    local container_target=$target
+    case "$target" in
+        http://*|https://*|git@*|git://*|ssh://*) ;;
+        *)
+            local abs
+            abs=$(realpath "$target" 2>/dev/null || printf '%s' "$target")
+            case "$abs" in
+                "$PWD"|"$PWD"/*) container_target="/work${abs#$PWD}" ;;
+                *) echo "vulnscan: filesystem target must live under \$PWD ($PWD)" >&2; return 2 ;;
+            esac
+            ;;
+    esac
+    local has_o=0 a
+    for a in "$@"; do [ "$a" = "-o" ] && has_o=1; done
+    local extra=()
+    if [ "$has_o" = "0" ]; then
+        extra=(-o "/work/vuln-scan-$(date +%Y%m%d-%H%M%S)")
+    fi
+    docker run --rm -t \
+        -v "$PWD":/work \
+        ghcr.io/reaandrew/vuln-scan:latest \
+        "$container_target" "${extra[@]}" "$@"
+}

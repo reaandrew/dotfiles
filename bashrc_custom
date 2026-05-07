@@ -135,14 +135,24 @@ fif() { grep -rn --color=auto "$1" . 2>/dev/null; }
 eval "$(starship init bash)"
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  vulnscan — wrapper around ghcr.io/reaandrew/vuln-scan
-#  https://github.com/reaandrew/vuln-scan
+#  vulnscan — run reaandrew/vuln-scan against a git URL or local path.
+#  Prefers the prebuilt container image; falls back to a local clone +
+#  scan.sh when docker isn't available (e.g. inside the devenv VM, where
+#  the underlying scanners are installed natively).
 # ─────────────────────────────────────────────────────────────────────────────
 vulnscan() {
     if [ $# -lt 1 ]; then
         echo 'usage: vulnscan <git-url-or-path> [-o OUT_DIR] [--keep] [--no-spinner]' >&2
         return 2
     fi
+    if command -v docker >/dev/null 2>&1; then
+        _vulnscan_docker "$@"
+    else
+        _vulnscan_local "$@"
+    fi
+}
+
+_vulnscan_docker() {
     local target=$1; shift
     local container_target=$target
     case "$target" in
@@ -166,4 +176,21 @@ vulnscan() {
         -v "$PWD":/work \
         ghcr.io/reaandrew/vuln-scan:latest \
         "$container_target" "${extra[@]}" "$@"
+}
+
+_vulnscan_local() {
+    local repo=${VULNSCAN_REPO:-$HOME/.vuln-scan}
+    if [ ! -d "$repo/.git" ]; then
+        echo "vulnscan: cloning vuln-scan to $repo (one-time)" >&2
+        git clone --depth 1 https://github.com/reaandrew/vuln-scan.git "$repo" >&2 || return 1
+    else
+        git -C "$repo" pull --quiet >&2 || true
+    fi
+    local has_o=0 a
+    for a in "$@"; do [ "$a" = "-o" ] && has_o=1; done
+    if [ "$has_o" = "0" ]; then
+        bash "$repo/scan.sh" "$@" -o "$PWD/vuln-scan-$(date +%Y%m%d-%H%M%S)"
+    else
+        bash "$repo/scan.sh" "$@"
+    fi
 }

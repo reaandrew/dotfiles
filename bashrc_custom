@@ -142,7 +142,7 @@ eval "$(starship init bash)"
 # ─────────────────────────────────────────────────────────────────────────────
 vulnscan() {
     if [ $# -lt 1 ]; then
-        echo 'usage: vulnscan <git-url-or-path> [-o OUT_DIR] [--keep] [--no-spinner] [--no-host-check]' >&2
+        echo 'usage: vulnscan <git-url-or-path> [-o OUT_DIR] [--keep] [--no-spinner] [--no-host-check] [--enrich [--enrich-model M]]' >&2
         return 2
     fi
     if command -v docker >/dev/null 2>&1; then
@@ -172,8 +172,15 @@ _vulnscan_docker() {
     if [ "$has_o" = "0" ]; then
         extra=(-o "/work/vuln-scan-$(date +%Y%m%d-%H%M%S)")
     fi
+    # Persist Ollama model between runs so --enrich doesn't re-download
+    local has_enrich=0
+    for a in "$@"; do [ "$a" = "--enrich" ] && has_enrich=1; done
+    local mount_args=(-v "$PWD":/work)
+    if [ "$has_enrich" = "1" ]; then
+        mount_args+=(-v vulnscan-ollama:/root/.ollama)
+    fi
     docker run --rm -t \
-        -v "$PWD":/work \
+        "${mount_args[@]}" \
         ghcr.io/reaandrew/vuln-scan:latest \
         "$container_target" "${extra[@]}" "$@"
 }

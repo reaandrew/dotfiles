@@ -155,8 +155,8 @@ extract() {
 # Quick find file
 ff() { find . -type f -iname "*$1*" 2>/dev/null; }
 
-# Quick find directory
-fd() { find . -type d -iname "*$1*" 2>/dev/null; }
+# Quick find directory (named fdir, not fd, so it never shadows the fd tool)
+fdir() { find . -type d -iname "*$1*" 2>/dev/null; }
 
 # Search in files
 fif() { grep -rn --color=auto "$1" . 2>/dev/null; }

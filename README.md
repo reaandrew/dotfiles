@@ -52,7 +52,7 @@ glyphs render.
 - Git aliases (`gs`, `ga`, `gc`, `gp`, `gl`, etc.)
 - Docker aliases (`d`, `dc`, `dps`, `dex`, etc.)
 - Directory bookmarks (`mark`, `jump`, `marks`)
-- Useful functions (`mkcd`, `extract`, `ff`, `fif`)
+- Useful functions (`mkcd`, `extract`, `ff`, `fdir`, `fif`)
 - Safety aliases for `rm`, `cp`, `mv`
 
 ### Vim

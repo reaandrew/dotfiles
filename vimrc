@@ -62,7 +62,15 @@ set undofile                  " Persistent undo
 set undodir=~/.vim/undodir    " Undo directory
 
 set mouse=a                   " Enable mouse support
-set clipboard=unnamedplus     " Use system clipboard
+" Use system clipboard. unnamedplus (the + register) needs +X11, which macOS
+" Vim does not have — there the * register is the pasteboard, so use unnamed.
+" (has('unnamedplus') reports true on macOS Vim even though + does not work,
+" so test the OS, not the feature.)
+if has('macunix')
+  set clipboard=unnamed
+else
+  set clipboard=unnamedplus
+endif
 set updatetime=250            " Faster updates
 set timeoutlen=500            " Mapping timeout
 set ttimeoutlen=10            " Key code timeout

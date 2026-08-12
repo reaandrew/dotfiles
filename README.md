@@ -24,6 +24,27 @@ After installation:
 2. Open vim and run `:PlugInstall`
 3. Start a new tmux session
 
+### macOS
+
+The configs detect Darwin and adapt (pbcopy instead of xclip, `lsof` instead of
+`netstat`, `sysctl hw.ncpu` instead of `nproc`), but macOS ships bash 3.2 and a
+BSD userland, so install the GNU toolchain first:
+
+```bash
+brew install bash starship coreutils fzf jq httpie direnv shellcheck htop tmux
+brew install --cask font-fira-code-nerd-font
+
+# make bash 5 the login shell
+sudo sh -c 'echo /opt/homebrew/bin/bash >> /etc/shells'
+chsh -s /opt/homebrew/bin/bash
+
+# macOS login shells read .bash_profile, not .bashrc
+echo '[ -f "$HOME/.bashrc" ] && source "$HOME/.bashrc"' > ~/.bash_profile
+```
+
+Then set the terminal font to *FiraCode Nerd Font* so the powerline and devicon
+glyphs render.
+
 ## Key Features
 
 ### Bash

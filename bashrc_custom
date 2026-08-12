@@ -3,6 +3,24 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Platform detection
+# ─────────────────────────────────────────────────────────────────────────────
+case "$(uname -s)" in
+    Darwin) IS_MACOS=1 ;;
+    *)      IS_MACOS=0 ;;
+esac
+
+# Homebrew (Apple Silicon) — put brew tools ahead of the macOS defaults
+if [ "$IS_MACOS" = "1" ] && [ -x /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+    # GNU coreutils under their normal names (ls, nproc, date, ...)
+    if [ -d /opt/homebrew/opt/coreutils/libexec/gnubin ]; then
+        PATH="/opt/homebrew/opt/coreutils/libexec/gnubin:$PATH"
+        MANPATH="/opt/homebrew/opt/coreutils/libexec/gnuman:$MANPATH"
+    fi
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Better History
 # ─────────────────────────────────────────────────────────────────────────────
 HISTSIZE=50000
@@ -22,7 +40,13 @@ alias ~='cd ~'
 # ─────────────────────────────────────────────────────────────────────────────
 #  Better ls with colors
 # ─────────────────────────────────────────────────────────────────────────────
-alias ls='ls --color=auto --group-directories-first'
+# GNU ls (Linux, or macOS with brew coreutils on PATH) supports these flags;
+# BSD ls on a bare macOS does not, so fall back to -G for colour.
+if ls --group-directories-first --version >/dev/null 2>&1; then
+    alias ls='ls --color=auto --group-directories-first'
+else
+    alias ls='ls -G'
+fi
 alias ll='ls -alFh'
 alias la='ls -A'
 alias lt='ls -ltrh'
@@ -63,13 +87,21 @@ alias dlog='docker logs -f'
 alias c='clear'
 alias h='history'
 alias j='jobs -l'
-alias ports='netstat -tulanp 2>/dev/null || ss -tulanp'
+if [ "$IS_MACOS" = "1" ]; then
+    alias ports='lsof -nP -iTCP -sTCP:LISTEN'
+else
+    alias ports='netstat -tulanp 2>/dev/null || ss -tulanp'
+fi
 alias myip='curl -s ifconfig.me'
 alias path='echo $PATH | tr ":" "\n"'
 alias now='date +"%Y-%m-%d %H:%M:%S"'
 
-# Make with all cores
-alias make='make -j$(nproc)'
+# Make with all cores (nproc is GNU; macOS without coreutils uses sysctl)
+if command -v nproc >/dev/null 2>&1; then
+    alias make='make -j$(nproc)'
+else
+    alias make='make -j$(sysctl -n hw.ncpu)'
+fi
 
 # Quick edit configs
 alias bashrc='${EDITOR:-vim} ~/.bashrc'
@@ -132,7 +164,13 @@ fif() { grep -rn --color=auto "$1" . 2>/dev/null; }
 # ─────────────────────────────────────────────────────────────────────────────
 #  Initialize Starship Prompt
 # ─────────────────────────────────────────────────────────────────────────────
-eval "$(starship init bash)"
+command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Shell integrations (no-ops when the tool isn't installed)
+# ─────────────────────────────────────────────────────────────────────────────
+command -v direnv >/dev/null 2>&1 && eval "$(direnv hook bash)"
+command -v fzf >/dev/null 2>&1 && eval "$(fzf --bash 2>/dev/null)"
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  vulnscan — run reaandrew/vuln-scan against a git URL or local path.

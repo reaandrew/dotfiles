@@ -10,6 +10,19 @@ case "$(uname -s)" in
     *)      IS_MACOS=0 ;;
 esac
 
+# ─────────────────────────────────────────────────────────────────────────────
+#  Shell detection — this file is sourced from both ~/.bashrc and ~/.zshrc,
+#  so anything shell-specific (history, prompt, tool hooks) branches on this.
+#  Everything else below is plain POSIX and works unchanged in either shell.
+# ─────────────────────────────────────────────────────────────────────────────
+if [ -n "$ZSH_VERSION" ]; then
+    CURRENT_SHELL=zsh
+elif [ -n "$BASH_VERSION" ]; then
+    CURRENT_SHELL=bash
+else
+    CURRENT_SHELL=sh
+fi
+
 # Homebrew (Apple Silicon) — put brew tools ahead of the macOS defaults
 if [ "$IS_MACOS" = "1" ] && [ -x /opt/homebrew/bin/brew ]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
@@ -24,10 +37,19 @@ fi
 #  Better History
 # ─────────────────────────────────────────────────────────────────────────────
 HISTSIZE=50000
-HISTFILESIZE=100000
-HISTCONTROL=ignoreboth:erasedups
-shopt -s histappend
-PROMPT_COMMAND="history -a;$PROMPT_COMMAND"
+if [ "$CURRENT_SHELL" = "zsh" ]; then
+    # zsh equivalents: SAVEHIST caps the file, the setopts give us the same
+    # append-as-you-go + dedupe + ignore-leading-space behaviour as bash below.
+    HISTFILE="$HOME/.zsh_history"
+    SAVEHIST=100000
+    setopt APPEND_HISTORY INC_APPEND_HISTORY SHARE_HISTORY
+    setopt HIST_IGNORE_ALL_DUPS HIST_IGNORE_SPACE HIST_REDUCE_BLANKS
+elif [ "$CURRENT_SHELL" = "bash" ]; then
+    HISTFILESIZE=100000
+    HISTCONTROL=ignoreboth:erasedups
+    shopt -s histappend
+    PROMPT_COMMAND="history -a;$PROMPT_COMMAND"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Navigation Aliases
@@ -103,8 +125,11 @@ else
     alias make='make -j$(sysctl -n hw.ncpu)'
 fi
 
-# Quick edit configs
+# Quick edit configs — shellrc opens the shared file, which is where changes
+# actually belong; bashrc/zshrc open the thin per-shell stubs that source it.
+alias shellrc='${EDITOR:-vim} ~/dotfiles/bashrc_custom'
 alias bashrc='${EDITOR:-vim} ~/.bashrc'
+alias zshrc='${EDITOR:-vim} ~/.zshrc'
 alias tmuxconf='${EDITOR:-vim} ~/.tmux.conf'
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -164,13 +189,19 @@ fif() { grep -rn --color=auto "$1" . 2>/dev/null; }
 # ─────────────────────────────────────────────────────────────────────────────
 #  Initialize Starship Prompt
 # ─────────────────────────────────────────────────────────────────────────────
-command -v starship >/dev/null 2>&1 && eval "$(starship init bash)"
+if command -v starship >/dev/null 2>&1 && [ "$CURRENT_SHELL" != "sh" ]; then
+    eval "$(starship init "$CURRENT_SHELL")"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Shell integrations (no-ops when the tool isn't installed)
 # ─────────────────────────────────────────────────────────────────────────────
-command -v direnv >/dev/null 2>&1 && eval "$(direnv hook bash)"
-command -v fzf >/dev/null 2>&1 && eval "$(fzf --bash 2>/dev/null)"
+if command -v direnv >/dev/null 2>&1 && [ "$CURRENT_SHELL" != "sh" ]; then
+    eval "$(direnv hook "$CURRENT_SHELL")"
+fi
+if command -v fzf >/dev/null 2>&1 && [ "$CURRENT_SHELL" != "sh" ]; then
+    eval "$(fzf "--$CURRENT_SHELL" 2>/dev/null)"
+fi
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  vulnscan — run reaandrew/vuln-scan against a git URL or local path.

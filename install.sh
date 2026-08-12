@@ -43,6 +43,25 @@ link_file() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  Point a shell's rc file at the shared config (idempotent, non-destructive —
+#  appends rather than symlinking so any machine-local lines are preserved)
+# ─────────────────────────────────────────────────────────────────────────────
+link_shell_config() {
+    local rcfile="$1"
+    local shell_name="$2"
+
+    if grep -q "source.*dotfiles/bashrc_custom" "$rcfile" 2>/dev/null; then
+        info "bashrc_custom already sourced in $(basename "$rcfile")"
+        return
+    fi
+
+    echo "" >> "$rcfile"
+    echo "# Load custom shell configuration (shared between bash and zsh)" >> "$rcfile"
+    echo "[ -f \"$DOTFILES_DIR/bashrc_custom\" ] && source \"$DOTFILES_DIR/bashrc_custom\"" >> "$rcfile"
+    info "Added bashrc_custom to $(basename "$rcfile") ($shell_name)"
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Install dependencies
 # ─────────────────────────────────────────────────────────────────────────────
 install_dependencies() {
@@ -90,14 +109,21 @@ main() {
     # Install dependencies
     install_dependencies
 
-    # Append bashrc_custom to .bashrc if not already sourced
-    if ! grep -q "source.*dotfiles/bashrc_custom" "$HOME/.bashrc" 2>/dev/null; then
-        echo "" >> "$HOME/.bashrc"
-        echo "# Load custom bash configuration" >> "$HOME/.bashrc"
-        echo "[ -f \"$DOTFILES_DIR/bashrc_custom\" ] && source \"$DOTFILES_DIR/bashrc_custom\"" >> "$HOME/.bashrc"
-        info "Added bashrc_custom to .bashrc"
+    # bashrc_custom is shell-aware, so both bash and zsh source the same file.
+    # macOS defaults to zsh and Debian to bash; wiring up both means the config
+    # loads whichever shell you land in.
+    link_shell_config "$HOME/.bashrc" "bash"
+    link_shell_config "$HOME/.zshrc" "zsh"
+
+    # macOS terminals start login shells, which read ~/.bash_profile and never
+    # ~/.bashrc. zsh has no such split — ~/.zshrc runs for both.
+    if ! grep -q "bashrc" "$HOME/.bash_profile" 2>/dev/null; then
+        echo "" >> "$HOME/.bash_profile"
+        echo "# Login shells read this file, not ~/.bashrc — so source it." >> "$HOME/.bash_profile"
+        echo "[ -f \"\$HOME/.bashrc\" ] && source \"\$HOME/.bashrc\"" >> "$HOME/.bash_profile"
+        info "Added .bashrc sourcing to .bash_profile"
     else
-        info "bashrc_custom already sourced in .bashrc"
+        info ".bash_profile already sources .bashrc"
     fi
 
     echo ""
@@ -106,7 +132,7 @@ main() {
     echo "══════════════════════════════════════════════════════════════════════════════"
     echo ""
     echo "Next steps:"
-    echo "  1. Restart your terminal or run: source ~/.bashrc"
+    echo "  1. Restart your terminal (or: exec \$SHELL -l)"
     echo "  2. Open vim and run: :PlugInstall"
     echo "  3. Start a new tmux session"
     echo ""

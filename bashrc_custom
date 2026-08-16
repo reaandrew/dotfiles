@@ -270,3 +270,33 @@ _vulnscan_local() {
         bash "$repo/scan.sh" "$@"
     fi
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Clipboard over SSH (OSC 52)
+#  Native pbcopy writes to the clipboard of the machine it runs on, which is
+#  useless in an SSH session — the text lands on the remote box. OSC 52 instead
+#  asks the *terminal emulator* to set the clipboard, so it reaches the laptop
+#  actually being typed at. Only override inside SSH; local pbcopy stays native.
+# ─────────────────────────────────────────────────────────────────────────────
+_osc52_copy() {
+    _osc52_b64=$(base64 | tr -d '\r\n')
+    # Terminals cap the sequence length; skip rather than emit a truncated one.
+    if [ "${#_osc52_b64}" -gt 74994 ]; then
+        echo "osc52: payload too large (${#_osc52_b64} b64 bytes), clipboard unchanged" >&2
+        unset _osc52_b64
+        return 1
+    fi
+    # Inside tmux the sequence must be wrapped so it reaches the outer terminal.
+    if [ -n "$TMUX" ]; then
+        printf '\033Ptmux;\033\033]52;c;%s\a\033\\' "$_osc52_b64" > /dev/tty
+    else
+        printf '\033]52;c;%s\a' "$_osc52_b64" > /dev/tty
+    fi
+    unset _osc52_b64
+}
+
+if [ -n "$SSH_CONNECTION" ] && [ -t 1 -o -e /dev/tty ]; then
+    pbcopy() { _osc52_copy; }
+    # No pbpaste counterpart: terminals refuse OSC 52 clipboard *reads* by
+    # design, so reading the local clipboard remotely is not available.
+fi
